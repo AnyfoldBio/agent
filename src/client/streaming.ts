@@ -7,7 +7,6 @@ import {
   type ToolSet,
   type UIMessageChunk,
 } from "ai";
-import type { JSONValue } from "@ai-sdk/provider";
 import { v } from "convex/values";
 import {
   vMessageDoc,
@@ -227,7 +226,7 @@ export class DeltaStreamer<T> {
     public readonly metadata: {
       threadId: string;
       userId?: string;
-      metadata?: JSONValue;
+      generationId?: string;
       order: number;
       stepOrder: number;
       agentName?: string;

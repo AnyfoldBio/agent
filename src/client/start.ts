@@ -65,10 +65,11 @@ export async function startGeneration<
      */
     prompt?: string | (ModelMessage | Message)[];
     /**
-     * Arbitrary metadata to stamp onto generated assistant messages and live
-     * stream rows.
+     * Explicit identifier for the assistant generation attempt created by this
+     * call. Persisted on the pending assistant row, live stream row, and final
+     * assistant messages.
      */
-    generatedMessageMetadata?: unknown;
+    generationId?: string;
     /**
      * If provided alongside prompt, the ordering will be:
      * 1. system prompt
@@ -148,7 +149,7 @@ export async function startGeneration<
           prompt: args.prompt,
           messages: args.messages,
           promptMessageId: args.promptMessageId,
-          generatedMessageMetadata: args.generatedMessageMetadata,
+          generationId: args.generationId,
           storageOptions: { saveMessages },
         })
       : {
@@ -266,10 +267,10 @@ export async function startGeneration<
             newResponseMessages,
           );
         }
-        if (args.generatedMessageMetadata !== undefined) {
+        if (args.generationId !== undefined) {
           serialized.messages = serialized.messages.map((message) => ({
             ...message,
-            metadata: args.generatedMessageMetadata,
+            generationId: args.generationId,
           }));
         }
         const embeddings = await embedMessages(
@@ -281,7 +282,7 @@ export async function startGeneration<
           serialized.messages.push({
             message: { role: "assistant", content: [] },
             status: "pending",
-            metadata: args.generatedMessageMetadata,
+            generationId: args.generationId,
           });
           embeddings?.vectors.push(null);
         }
