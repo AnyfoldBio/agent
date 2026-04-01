@@ -150,6 +150,7 @@ function publicStreamMessage(m: Doc<"streamingMessages">): StreamMessage {
       "format",
       "order",
       "stepOrder",
+      "metadata",
       "userId",
       "agentName",
       "model",
