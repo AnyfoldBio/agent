@@ -6,6 +6,7 @@ type TestMessage = {
   stepOrder: number;
   status: "pending" | "success" | "failed" | "streaming";
   id: string;
+  generationId?: string;
 };
 
 describe("dedupeMessages", () => {
@@ -251,5 +252,32 @@ describe("dedupeMessages", () => {
     // The result depends on which array comes first in messages.concat(streamMessages)
     // Since messages comes first, it should win when both have same status
     expect(result[0].id).toBe("messages-success");
+  });
+
+  it("keeps different generationIds separate even when order and stepOrder match", () => {
+    const messages: TestMessage[] = [
+      {
+        order: 1,
+        stepOrder: 0,
+        generationId: "gen-1",
+        status: "success",
+        id: "messages-gen-1",
+      },
+    ];
+    const streamMessages: TestMessage[] = [
+      {
+        order: 1,
+        stepOrder: 0,
+        generationId: "gen-2",
+        status: "streaming",
+        id: "stream-gen-2",
+      },
+    ];
+
+    const result = dedupeMessages(messages, streamMessages);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe("messages-gen-1");
+    expect(result[1].id).toBe("stream-gen-2");
   });
 });
