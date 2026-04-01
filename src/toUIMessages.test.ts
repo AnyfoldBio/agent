@@ -72,6 +72,40 @@ describe("toUIMessages", () => {
     expect(uiMessages[0].generationId).toBe("branch:assistant-1");
   });
 
+  it("keeps assistant generations separate when they share the same order", () => {
+    const messages = [
+      baseMessageDoc({
+        _id: "assistant-1",
+        order: 1,
+        stepOrder: 0,
+        generationId: "gen-1",
+        message: {
+          role: "assistant",
+          content: "First branch response",
+        },
+        text: "First branch response",
+      }),
+      baseMessageDoc({
+        _id: "assistant-2",
+        order: 1,
+        stepOrder: 0,
+        generationId: "gen-2",
+        message: {
+          role: "assistant",
+          content: "Second branch response",
+        },
+        text: "Second branch response",
+      }),
+    ];
+
+    const uiMessages = toUIMessages(messages);
+    expect(uiMessages).toHaveLength(2);
+    expect(uiMessages[0].generationId).toBe("gen-1");
+    expect(uiMessages[0].text).toBe("First branch response");
+    expect(uiMessages[1].generationId).toBe("gen-2");
+    expect(uiMessages[1].text).toBe("Second branch response");
+  });
+
   it("handles multiple messages", () => {
     const messages = [
       baseMessageDoc({
