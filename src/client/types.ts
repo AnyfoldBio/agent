@@ -87,8 +87,14 @@ export type AgentPrompt = {
    *   those will be included automatically.
    *
    * Note: if this is provided, no input messages will be saved by default.
-   */
+  */
   promptMessageId?: string | undefined;
+  /**
+   * Arbitrary metadata to stamp onto generated assistant messages and live
+   * stream rows. Useful for app-level joins without relying on timing/order
+   * inference.
+   */
+  generatedMessageMetadata?: JSONValue | undefined;
   /**
    * The model to use for the LLM calls. This will override the languageModel
    * specified in the Agent config.

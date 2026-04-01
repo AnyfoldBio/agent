@@ -65,6 +65,11 @@ export async function startGeneration<
      */
     prompt?: string | (ModelMessage | Message)[];
     /**
+     * Arbitrary metadata to stamp onto generated assistant messages and live
+     * stream rows.
+     */
+    generatedMessageMetadata?: unknown;
+    /**
      * If provided alongside prompt, the ordering will be:
      * 1. system prompt
      * 2. search context
@@ -143,6 +148,7 @@ export async function startGeneration<
           prompt: args.prompt,
           messages: args.messages,
           promptMessageId: args.promptMessageId,
+          generatedMessageMetadata: args.generatedMessageMetadata,
           storageOptions: { saveMessages },
         })
       : {
@@ -260,6 +266,12 @@ export async function startGeneration<
             newResponseMessages,
           );
         }
+        if (args.generatedMessageMetadata !== undefined) {
+          serialized.messages = serialized.messages.map((message) => ({
+            ...message,
+            metadata: args.generatedMessageMetadata,
+          }));
+        }
         const embeddings = await embedMessages(
           ctx,
           { threadId, ...opts, userId },
@@ -269,6 +281,7 @@ export async function startGeneration<
           serialized.messages.push({
             message: { role: "assistant", content: [] },
             status: "pending",
+            metadata: args.generatedMessageMetadata,
           });
           embeddings?.vectors.push(null);
         }

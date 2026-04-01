@@ -100,6 +100,7 @@ export async function streamText<
           {
             threadId,
             userId,
+            metadata: streamTextArgs.generatedMessageMetadata,
             agentName: options?.agentName,
             model: getModelName(args.model),
             provider: getProviderName(args.model),
