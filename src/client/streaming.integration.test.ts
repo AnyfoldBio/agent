@@ -122,7 +122,7 @@ describe("HTTP Streaming Initiation", () => {
     });
   });
 
-  test("Stream metadata is exposed in listed streaming messages", async () => {
+  test("Stream generationId is exposed in listed streaming messages", async () => {
     await t.run(async (ctx) => {
       const streamer = new DeltaStreamer(
         components.agent,
@@ -131,7 +131,7 @@ describe("HTTP Streaming Initiation", () => {
         {
           ...testMetadata,
           threadId,
-          metadata: { branchNodeId: "branch_123" },
+          generationId: "branch_123",
         },
       );
 
@@ -142,7 +142,7 @@ describe("HTTP Streaming Initiation", () => {
         statuses: ["streaming"],
       });
       expect(streams).toHaveLength(1);
-      expect(streams[0].metadata).toEqual({ branchNodeId: "branch_123" });
+      expect(streams[0].generationId).toBe("branch_123");
     });
   });
 

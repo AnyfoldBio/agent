@@ -90,11 +90,11 @@ export type AgentPrompt = {
   */
   promptMessageId?: string | undefined;
   /**
-   * Arbitrary metadata to stamp onto generated assistant messages and live
-   * stream rows. Useful for app-level joins without relying on timing/order
-   * inference.
+   * Explicit identifier for a generated assistant branch/turn. This is
+   * persisted onto the pending assistant placeholder, live stream row, and
+   * finalized output messages so apps can join them without timing heuristics.
    */
-  generatedMessageMetadata?: JSONValue | undefined;
+  generationId?: string | undefined;
   /**
    * The model to use for the LLM calls. This will override the languageModel
    * specified in the Agent config.

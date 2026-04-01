@@ -173,7 +173,7 @@ describe("saveInputMessages", () => {
       });
     });
 
-    test("should stamp generated message metadata onto the pending assistant message", async () => {
+    test("should stamp generationId onto the pending assistant message", async () => {
       const t = initConvexTest(schema);
 
       await t.run(async (ctx) => {
@@ -181,7 +181,7 @@ describe("saveInputMessages", () => {
           ...defaultArgs,
           prompt: "Test prompt",
           messages: undefined,
-          generatedMessageMetadata: { branchNodeId: "branch_123" },
+          generationId: "branch_123",
           storageOptions: { saveMessages: "all" },
         });
 
@@ -191,7 +191,7 @@ describe("saveInputMessages", () => {
           expect.objectContaining({
             metadata: expect.arrayContaining([
               {},
-              { status: "pending", metadata: { branchNodeId: "branch_123" } },
+              { status: "pending", generationId: "branch_123" },
             ]),
           }),
         );
