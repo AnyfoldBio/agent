@@ -29,6 +29,7 @@ export function blankUIMessage<METADATA = unknown>(
     order: streamMessage.order,
     stepOrder: streamMessage.stepOrder,
     status: statusFromStreamStatus(streamMessage.status),
+    generationId: streamMessage.generationId,
     agentName: streamMessage.agentName,
     text: "",
     _creationTime: Date.now(),

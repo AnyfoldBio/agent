@@ -226,6 +226,7 @@ export class DeltaStreamer<T> {
     public readonly metadata: {
       threadId: string;
       userId?: string;
+      generationId?: string;
       order: number;
       stepOrder: number;
       agentName?: string;

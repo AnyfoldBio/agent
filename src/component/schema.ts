@@ -50,7 +50,9 @@ export const schema = defineSchema({
     tool: v.boolean(), // either tool call (assistant) or tool result (tool)
     text: v.optional(v.string()),
 
-    // Result metadata
+    // Explicitly identifies an assistant generation attempt across the pending
+    // placeholder, live stream row, and finalized output messages.
+    generationId: v.optional(v.string()),
     usage: v.optional(vUsage),
     providerMetadata: v.optional(vProviderMetadata), // Received from model
     sources: v.optional(v.array(vSource)),
@@ -85,7 +87,7 @@ export const schema = defineSchema({
 
   // Status: if it's done, it's deleted, then deltas are vacuumed
   streamingMessages: defineTable({
-    // extra metadata?
+    generationId: v.optional(v.string()),
     userId: v.optional(v.string()),
     agentName: v.optional(v.string()),
     model: v.optional(v.string()),

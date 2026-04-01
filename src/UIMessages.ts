@@ -42,6 +42,7 @@ export type UIMessage<
   order: number;
   stepOrder: number;
   status: UIStatus;
+  generationId?: string;
   agentName?: string;
   userId?: string;
   text: string;
@@ -218,6 +219,7 @@ function groupAssistantMessages<METADATA = unknown>(
 
   let currentAssistantGroup: (MessageDoc & ExtraFields<METADATA>)[] = [];
   let currentOrder: number | undefined;
+  let currentGenerationId: string | undefined;
 
   for (const message of messages) {
     const coreMessage = message.message && toModelMessage(message.message);
@@ -232,6 +234,7 @@ function groupAssistantMessages<METADATA = unknown>(
         });
         currentAssistantGroup = [];
         currentOrder = undefined;
+        currentGenerationId = undefined;
       }
       // Add singleton group
       groups.push({
@@ -241,8 +244,12 @@ function groupAssistantMessages<METADATA = unknown>(
     } else {
       // Assistant or tool message
 
-      // Start new group if order changes or this is the first assistant/tool message
-      if (currentOrder !== undefined && message.order !== currentOrder) {
+      // Start new group if order or generation changes.
+      if (
+        currentOrder !== undefined &&
+        (message.order !== currentOrder ||
+          message.generationId !== currentGenerationId)
+      ) {
         if (currentAssistantGroup.length > 0) {
           groups.push({
             role: "assistant",
@@ -253,6 +260,7 @@ function groupAssistantMessages<METADATA = unknown>(
       }
 
       currentOrder = message.order;
+      currentGenerationId = message.generationId;
       currentAssistantGroup.push(message);
 
       // End group if this is an assistant message without tool calls
@@ -263,6 +271,7 @@ function groupAssistantMessages<METADATA = unknown>(
         });
         currentAssistantGroup = [];
         currentOrder = undefined;
+        currentGenerationId = undefined;
       }
     }
   }
@@ -303,6 +312,7 @@ function createSystemUIMessage<
     text,
     role: "system",
     agentName: message.agentName,
+    generationId: message.generationId,
     userId: message.userId,
     parts: [{ type: "text", text, ...partCommon } satisfies TextUIPart],
     metadata: message.metadata,
@@ -363,6 +373,7 @@ function createUserUIMessage<
     key: `${message.threadId}-${message.order}-${message.stepOrder}`,
     text,
     role: "user",
+    generationId: message.generationId,
     userId: message.userId,
     parts,
     metadata: message.metadata,
@@ -773,6 +784,7 @@ function createAssistantUIMessage<
     role: "assistant",
     text: joinText(allParts),
     status,
+    generationId: group.find((m) => m.generationId)?.generationId,
     parts: allParts,
     metadata: group.find((m) => m.metadata)?.metadata,
   };
@@ -808,6 +820,7 @@ export function combineUIMessages(messages: UIMessage[]): UIMessage[] {
     const previous = acc.at(-1)!;
     if (
       message.order !== previous.order ||
+      message.generationId !== previous.generationId ||
       previous.role !== message.role ||
       message.role !== "assistant"
     ) {
@@ -836,7 +849,7 @@ export function combineUIMessages(messages: UIMessage[]): UIMessage[] {
     }
     acc.push({
       ...previous,
-      ...pick(message, ["status", "metadata", "agentName"]),
+      ...pick(message, ["status", "generationId", "metadata", "agentName"]),
       parts: newParts,
       text: joinText(newParts),
     });

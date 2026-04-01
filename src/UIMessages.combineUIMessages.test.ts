@@ -236,4 +236,41 @@ describe("combineUIMessages", () => {
     expect(toolCall.state).toBe("output-available");
     expect(toolCall.output).toBe("completed");
   });
+
+  it("keeps assistant generations separate when order matches", () => {
+    const messages: UIMessage[] = [
+      {
+        id: "msg-gen-1",
+        key: "thread-1-0",
+        order: 1,
+        stepOrder: 0,
+        generationId: "gen-1",
+        status: "success",
+        role: "assistant",
+        parts: [{ type: "text", text: "First generation", state: "done" }],
+        text: "First generation",
+        _creationTime: Date.now(),
+      },
+      {
+        id: "msg-gen-2",
+        key: "thread-1-0",
+        order: 1,
+        stepOrder: 0,
+        generationId: "gen-2",
+        status: "success",
+        role: "assistant",
+        parts: [{ type: "text", text: "Second generation", state: "done" }],
+        text: "Second generation",
+        _creationTime: Date.now() + 1,
+      },
+    ];
+
+    const result = combineUIMessages(messages);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].generationId).toBe("gen-1");
+    expect(result[0].text).toBe("First generation");
+    expect(result[1].generationId).toBe("gen-2");
+    expect(result[1].text).toBe("Second generation");
+  });
 });

@@ -10,6 +10,23 @@ import { omit } from "convex-helpers";
 import type { Tool, ToolUIPart, TypedToolResult } from "ai";
 
 describe("UIMessageChunks", () => {
+  it("preserves generationId on blank streamed UI messages", async () => {
+    const uiMessage = blankUIMessage(
+      {
+        streamId: "s1",
+        status: "streaming",
+        order: 0,
+        stepOrder: 1,
+        format: "UIMessageChunk",
+        generationId: "branch:assistant-1",
+        agentName: "agent1",
+      },
+      "thread1",
+    );
+
+    expect(uiMessage.generationId).toBe("branch:assistant-1");
+  });
+
   it("updates a UIMessage with a tool call and follow up", async () => {
     const uiMessage = blankUIMessage(
       {

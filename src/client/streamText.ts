@@ -100,6 +100,7 @@ export async function streamText<
           {
             threadId,
             userId,
+            generationId: streamTextArgs.generationId,
             agentName: options?.agentName,
             model: getModelName(args.model),
             provider: getProviderName(args.model),

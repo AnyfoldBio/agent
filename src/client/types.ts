@@ -87,8 +87,14 @@ export type AgentPrompt = {
    *   those will be included automatically.
    *
    * Note: if this is provided, no input messages will be saved by default.
-   */
+  */
   promptMessageId?: string | undefined;
+  /**
+   * Explicit identifier for a generated assistant branch/turn. This is
+   * persisted onto the pending assistant placeholder, live stream row, and
+   * finalized output messages so apps can join them without timing heuristics.
+   */
+  generationId?: string | undefined;
   /**
    * The model to use for the LLM calls. This will override the languageModel
    * specified in the Agent config.

@@ -34,6 +34,7 @@ export type MessageDocLike = {
   stepOrder: number;
   status: MessageStatus | "streaming";
   message?: Message;
+  generationId?: string;
 };
 
 export type ThreadMessagesQuery<
@@ -180,7 +181,11 @@ export function useThreadMessages<Query extends ThreadMessagesQuery<any, any>>(
           if (!last) {
             return [msg];
           }
-          if (last.order !== msg.order || last.stepOrder !== msg.stepOrder) {
+          if (
+            last.order !== msg.order ||
+            last.stepOrder !== msg.stepOrder ||
+            last.generationId !== msg.generationId
+          ) {
             return [...msgs, msg];
           }
           if (

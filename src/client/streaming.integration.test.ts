@@ -122,6 +122,30 @@ describe("HTTP Streaming Initiation", () => {
     });
   });
 
+  test("Stream generationId is exposed in listed streaming messages", async () => {
+    await t.run(async (ctx) => {
+      const streamer = new DeltaStreamer(
+        components.agent,
+        ctx,
+        { ...defaultTestOptions },
+        {
+          ...testMetadata,
+          threadId,
+          generationId: "branch_123",
+        },
+      );
+
+      await streamer.getStreamId();
+
+      const streams = await ctx.runQuery(components.agent.streams.list, {
+        threadId,
+        statuses: ["streaming"],
+      });
+      expect(streams).toHaveLength(1);
+      expect(streams[0].generationId).toBe("branch_123");
+    });
+  });
+
   test("consumeStream processes full AI SDK stream to deltas", async () => {
     await t.run(async (ctx) => {
       const streamer = new DeltaStreamer(

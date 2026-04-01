@@ -65,6 +65,12 @@ export async function startGeneration<
      */
     prompt?: string | (ModelMessage | Message)[];
     /**
+     * Explicit identifier for the assistant generation attempt created by this
+     * call. Persisted on the pending assistant row, live stream row, and final
+     * assistant messages.
+     */
+    generationId?: string;
+    /**
      * If provided alongside prompt, the ordering will be:
      * 1. system prompt
      * 2. search context
@@ -143,6 +149,7 @@ export async function startGeneration<
           prompt: args.prompt,
           messages: args.messages,
           promptMessageId: args.promptMessageId,
+          generationId: args.generationId,
           storageOptions: { saveMessages },
         })
       : {
@@ -260,6 +267,12 @@ export async function startGeneration<
             newResponseMessages,
           );
         }
+        if (args.generationId !== undefined) {
+          serialized.messages = serialized.messages.map((message) => ({
+            ...message,
+            generationId: args.generationId,
+          }));
+        }
         const embeddings = await embedMessages(
           ctx,
           { threadId, ...opts, userId },
@@ -269,6 +282,7 @@ export async function startGeneration<
           serialized.messages.push({
             message: { role: "assistant", content: [] },
             status: "pending",
+            generationId: args.generationId,
           });
           embeddings?.vectors.push(null);
         }

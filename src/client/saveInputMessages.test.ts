@@ -173,6 +173,31 @@ describe("saveInputMessages", () => {
       });
     });
 
+    test("should stamp generationId onto the pending assistant message", async () => {
+      const t = initConvexTest(schema);
+
+      await t.run(async (ctx) => {
+        await saveInputMessages(ctx, mockComponent, {
+          ...defaultArgs,
+          prompt: "Test prompt",
+          messages: undefined,
+          generationId: "branch_123",
+          storageOptions: { saveMessages: "all" },
+        });
+
+        expect(mockSaveMessages).toHaveBeenCalledWith(
+          ctx,
+          mockComponent,
+          expect.objectContaining({
+            metadata: expect.arrayContaining([
+              {},
+              { status: "pending", generationId: "branch_123" },
+            ]),
+          }),
+        );
+      });
+    });
+
     test("should save all with only prompt messages provided", async () => {
       const t = initConvexTest(schema);
 

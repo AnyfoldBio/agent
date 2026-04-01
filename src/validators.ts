@@ -458,7 +458,7 @@ export const vMessageWithMetadataInternal = v.object({
   text: v.optional(v.string()),
   fileIds: v.optional(v.array(v.id("files"))),
   status: v.optional(vMessageStatus),
-  // metadata
+  generationId: v.optional(v.string()),
   finishReason: v.optional(vFinishReason),
   model: v.optional(v.string()),
   provider: v.optional(v.string()),
@@ -520,6 +520,7 @@ const vPromptFields = {
   prompt: v.optional(v.string()),
   messages: v.optional(v.array(vMessage)),
   promptMessageId: v.optional(v.string()),
+  generationId: v.optional(v.string()),
 };
 
 export const vCallSettings = v.object({
@@ -616,7 +617,7 @@ export const vStreamMessage = v.object({
   ),
   order: v.number(),
   stepOrder: v.number(),
-  // metadata
+  generationId: v.optional(v.string()),
   userId: v.optional(v.string()),
   agentName: v.optional(v.string()),
   model: v.optional(v.string()),
@@ -657,7 +658,7 @@ export const vMessageDoc = v.object({
   tool: v.boolean(), // either tool call (assistant) or tool result (tool)
   text: v.optional(v.string()),
 
-  // Result metadata
+  generationId: v.optional(v.string()),
   usage: v.optional(vUsage),
   providerMetadata: v.optional(vProviderMetadata), // Received from model
   sources: v.optional(v.array(vSource)),

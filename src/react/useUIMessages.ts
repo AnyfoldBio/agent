@@ -33,6 +33,7 @@ export type UIMessageLike = {
   status: UIStatus;
   parts: UIMessage["parts"];
   role: UIMessage["role"];
+  generationId?: string;
 };
 
 export type UIMessagesQuery<
@@ -171,6 +172,7 @@ export function dedupeMessages<
     order: number;
     stepOrder: number;
     status: UIStatus;
+    generationId?: string;
   },
 >(messages: M[], streamMessages: M[]): M[] {
   return sorted(messages.concat(streamMessages)).reduce((msgs, msg) => {
@@ -178,7 +180,11 @@ export function dedupeMessages<
     if (!last) {
       return [msg];
     }
-    if (last.order !== msg.order || last.stepOrder !== msg.stepOrder) {
+    if (
+      last.order !== msg.order ||
+      last.stepOrder !== msg.stepOrder ||
+      last.generationId !== msg.generationId
+    ) {
       return [...msgs, msg];
     }
     if (

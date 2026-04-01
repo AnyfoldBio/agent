@@ -25,6 +25,7 @@ export async function saveInputMessages(
     prompt: string | (ModelMessage | Message)[] | undefined;
     messages: (ModelMessage | Message)[] | undefined;
     promptMessageId: string | undefined;
+    generationId?: string;
     userId: string | undefined;
     threadId: string;
     agentName?: string;
@@ -85,7 +86,7 @@ export async function saveInputMessages(
     messages: [...toSave, { role: "assistant", content: [] }],
     metadata: [
       ...Array.from({ length: toSave.length }, () => ({})),
-      { status: "pending" },
+      { status: "pending", generationId: args.generationId },
     ],
     failPendingSteps: !!args.promptMessageId,
     promptMessageId: args.promptMessageId,
