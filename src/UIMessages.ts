@@ -42,6 +42,7 @@ export type UIMessage<
   order: number;
   stepOrder: number;
   status: UIStatus;
+  generationId?: string;
   agentName?: string;
   userId?: string;
   text: string;
@@ -303,6 +304,7 @@ function createSystemUIMessage<
     text,
     role: "system",
     agentName: message.agentName,
+    generationId: message.generationId,
     userId: message.userId,
     parts: [{ type: "text", text, ...partCommon } satisfies TextUIPart],
     metadata: message.metadata,
@@ -363,6 +365,7 @@ function createUserUIMessage<
     key: `${message.threadId}-${message.order}-${message.stepOrder}`,
     text,
     role: "user",
+    generationId: message.generationId,
     userId: message.userId,
     parts,
     metadata: message.metadata,
@@ -773,6 +776,7 @@ function createAssistantUIMessage<
     role: "assistant",
     text: joinText(allParts),
     status,
+    generationId: group.find((m) => m.generationId)?.generationId,
     parts: allParts,
     metadata: group.find((m) => m.metadata)?.metadata,
   };
@@ -836,7 +840,7 @@ export function combineUIMessages(messages: UIMessage[]): UIMessage[] {
     }
     acc.push({
       ...previous,
-      ...pick(message, ["status", "metadata", "agentName"]),
+      ...pick(message, ["status", "generationId", "metadata", "agentName"]),
       parts: newParts,
       text: joinText(newParts),
     });
