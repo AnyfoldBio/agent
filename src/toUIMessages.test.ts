@@ -56,6 +56,22 @@ describe("toUIMessages", () => {
     });
   });
 
+  it("exposes generationId on assistant UI messages", () => {
+    const messages = [
+      baseMessageDoc({
+        generationId: "branch:assistant-1",
+        message: {
+          role: "assistant",
+          content: "Hi, how can I help?",
+        },
+        text: "Hi, how can I help?",
+      }),
+    ];
+    const uiMessages = toUIMessages(messages);
+    expect(uiMessages).toHaveLength(1);
+    expect(uiMessages[0].generationId).toBe("branch:assistant-1");
+  });
+
   it("handles multiple messages", () => {
     const messages = [
       baseMessageDoc({
