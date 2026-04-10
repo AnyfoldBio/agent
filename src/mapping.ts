@@ -527,11 +527,16 @@ export async function serializeContent(
           } satisfies Infer<typeof vToolApprovalRequest>;
         }
         case "tool-approval-response": {
+          const approvalEditNote =
+            "editNote" in part
+              ? (part as { editNote?: string }).editNote
+              : undefined;
           return {
             type: part.type,
             approvalId: part.approvalId,
             approved: part.approved,
             reason: part.reason,
+            editNote: approvalEditNote,
             providerExecuted: part.providerExecuted,
             ...metadata,
           } satisfies Infer<typeof vToolApprovalResponse>;
@@ -609,12 +614,16 @@ export function fromModelMessageContent(content: Content): Message["content"] {
             ...metadata,
           } satisfies Infer<typeof vToolApprovalRequest>;
         case "tool-approval-response":
+          const serializedEditNote =
+            "editNote" in part
+              ? (part as { editNote?: string }).editNote
+              : undefined;
           return {
             type: part.type,
             approvalId: part.approvalId,
             approved: part.approved,
             reason: part.reason,
-            editNote: part.editNote,
+            editNote: serializedEditNote,
             providerExecuted: part.providerExecuted,
             ...metadata,
           } satisfies Infer<typeof vToolApprovalResponse>;
@@ -716,12 +725,16 @@ export function toModelMessageContent(
             ...metadata,
           } satisfies Infer<typeof vToolApprovalRequest>;
         case "tool-approval-response":
+          const modelEditNote =
+            "editNote" in part
+              ? (part as { editNote?: string }).editNote
+              : undefined;
           return {
             type: part.type,
             approvalId: part.approvalId,
             approved: part.approved,
             reason: part.reason,
-            editNote: part.editNote,
+            editNote: modelEditNote,
             providerExecuted: part.providerExecuted,
             ...metadata,
           } satisfies Infer<typeof vToolApprovalResponse>;

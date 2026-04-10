@@ -662,7 +662,7 @@ function createAssistantUIMessage<
           if (toolCallPart) {
             if (typedPart.approved) {
               toolCallPart.state = "approval-responded";
-              (toolCallPart as ToolUIPart & { approval?: object }).approval = {
+              (toolCallPart as any).approval = {
                 id: typedPart.approvalId,
                 approved: true,
                 reason: typedPart.reason,
@@ -670,7 +670,7 @@ function createAssistantUIMessage<
               };
             } else {
               toolCallPart.state = "output-denied";
-              (toolCallPart as ToolUIPart & { approval?: object }).approval = {
+              (toolCallPart as any).approval = {
                 id: typedPart.approvalId,
                 approved: false,
                 reason: typedPart.reason,
@@ -740,7 +740,7 @@ function createAssistantUIMessage<
 
       if (toolCallPart) {
         // Always update approval info, but only update state if not in a final state
-        (toolCallPart as ToolUIPart & { approval?: object }).approval = {
+        (toolCallPart as any).approval = {
           id: approvalPart.approvalId,
           approved: approvalPart.approved,
           reason: approvalPart.reason,
