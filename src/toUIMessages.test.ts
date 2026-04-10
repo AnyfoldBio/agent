@@ -1098,6 +1098,7 @@ describe("toUIMessages", () => {
                 approvalId: "approval1",
                 approved: true,
                 reason: "User confirmed",
+                editNote: "Sequence was edited before approval.",
               },
             ],
           },
@@ -1116,6 +1117,7 @@ describe("toUIMessages", () => {
         id: "approval1",
         approved: true,
         reason: "User confirmed",
+        editNote: "Sequence was edited before approval.",
       });
     });
 

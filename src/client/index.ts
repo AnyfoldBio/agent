@@ -1031,11 +1031,17 @@ export class Agent<
    * @param args.threadId The thread containing the tool call.
    * @param args.approvalId The approval ID from the tool-approval-request part.
    * @param args.reason Optional reason for approval.
+   * @param args.editNote Optional note describing approval-time config edits.
    * @returns The messageId of the saved approval response message.
    */
   async approveToolCall(
     ctx: MutationCtx,
-    args: { threadId: string; approvalId: string; reason?: string },
+    args: {
+      threadId: string;
+      approvalId: string;
+      reason?: string;
+      editNote?: string;
+    },
   ): Promise<{ messageId: string }> {
     return this.respondToToolCallApproval(ctx, { ...args, approved: true });
   }
@@ -1052,11 +1058,17 @@ export class Agent<
    * @param args.threadId The thread containing the tool call.
    * @param args.approvalId The approval ID from the tool-approval-request part.
    * @param args.reason Optional reason for denial.
+   * @param args.editNote Optional note describing approval-time config edits.
    * @returns The messageId of the saved denial response message.
    */
   async denyToolCall(
     ctx: MutationCtx,
-    args: { threadId: string; approvalId: string; reason?: string },
+    args: {
+      threadId: string;
+      approvalId: string;
+      reason?: string;
+      editNote?: string;
+    },
   ): Promise<{ messageId: string }> {
     return this.respondToToolCallApproval(ctx, { ...args, approved: false });
   }
@@ -1068,6 +1080,7 @@ export class Agent<
       approvalId: string;
       approved: boolean;
       reason?: string;
+      editNote?: string;
     },
   ): Promise<{ messageId: string }> {
     const { promptMessageId, existingResponseMessage } =
@@ -1081,6 +1094,7 @@ export class Agent<
       approvalId: args.approvalId,
       approved: args.approved,
       reason: args.reason,
+      editNote: args.editNote,
     };
 
     // Merge into an existing approval-response message for this step

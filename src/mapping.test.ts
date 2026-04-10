@@ -232,6 +232,7 @@ describe("mapping", () => {
       approvalId: "approval-123",
       approved: true,
       reason: "User approved",
+      editNote: "User edited the sequence before approval.",
     };
     const { content } = await serializeContent(
       {} as ActionCtx,

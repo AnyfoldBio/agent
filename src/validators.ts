@@ -295,6 +295,10 @@ export const vToolApprovalResponse = v.object({
    */
   reason: v.optional(v.string()),
   /**
+   * Optional note describing approval-time edits made to the tool input.
+   */
+  editNote: v.optional(v.string()),
+  /**
    * Flag indicating whether the tool call is provider-executed.
    * Only provider-executed tool approval responses should be sent to the model.
    */

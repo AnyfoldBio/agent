@@ -614,6 +614,7 @@ export function fromModelMessageContent(content: Content): Message["content"] {
             approvalId: part.approvalId,
             approved: part.approved,
             reason: part.reason,
+            editNote: part.editNote,
             providerExecuted: part.providerExecuted,
             ...metadata,
           } satisfies Infer<typeof vToolApprovalResponse>;
@@ -720,6 +721,7 @@ export function toModelMessageContent(
             approvalId: part.approvalId,
             approved: part.approved,
             reason: part.reason,
+            editNote: part.editNote,
             providerExecuted: part.providerExecuted,
             ...metadata,
           } satisfies Infer<typeof vToolApprovalResponse>;

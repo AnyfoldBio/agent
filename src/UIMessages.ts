@@ -415,6 +415,7 @@ function createAssistantUIMessage<
         approvalId: string;
         approved: boolean;
         reason?: string;
+        editNote?: string;
       };
   const approvalParts: ApprovalPart[] = [];
 
@@ -649,6 +650,7 @@ function createAssistantUIMessage<
             approvalId: string;
             approved: boolean;
             reason?: string;
+            editNote?: string;
           };
           const toolCallPart = allParts.find(
             (part) =>
@@ -664,6 +666,7 @@ function createAssistantUIMessage<
                 id: typedPart.approvalId,
                 approved: true,
                 reason: typedPart.reason,
+                editNote: typedPart.editNote,
               };
             } else {
               toolCallPart.state = "output-denied";
@@ -671,6 +674,7 @@ function createAssistantUIMessage<
                 id: typedPart.approvalId,
                 approved: false,
                 reason: typedPart.reason,
+                editNote: typedPart.editNote,
               };
             }
           } else {
@@ -740,6 +744,7 @@ function createAssistantUIMessage<
           id: approvalPart.approvalId,
           approved: approvalPart.approved,
           reason: approvalPart.reason,
+          editNote: approvalPart.editNote,
         };
         if (!finalStates.has(toolCallPart.state)) {
           if (approvalPart.approved) {
