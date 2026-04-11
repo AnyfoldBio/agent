@@ -28,6 +28,19 @@ const deleteFileTool = createTool({
   execute: async (_ctx, input) => `Deleted: ${input.filename}`,
 });
 
+const deleteFileJsonTool = createTool({
+  description: "Delete a file and return structured output",
+  inputSchema: z.object({ filename: z.string() }),
+  needsApproval: () => true,
+  execute: async (_ctx, input) => ({
+    status: "deleted",
+    filename: input.filename,
+    detail: {
+      operation: "delete",
+    },
+  }),
+});
+
 // Track usage handler calls to verify the full flow is exercised
 const usageCalls: LanguageModelUsage[] = [];
 const testUsageHandler: UsageHandler = async (_ctx, args) => {
@@ -114,6 +127,27 @@ const denialAgent = new Agent(components.agent, {
   usageHandler: testUsageHandler,
 });
 
+const approvalJsonAgent = new Agent(components.agent, {
+  name: "approval-json-test",
+  instructions: "You delete files when asked.",
+  tools: { deleteFileJson: deleteFileJsonTool },
+  languageModel: mockModel({
+    contentSteps: [
+      [
+        {
+          type: "tool-call",
+          toolCallId: "tc-approve-json",
+          toolName: "deleteFileJson",
+          input: JSON.stringify({ filename: "test.json" }),
+        },
+      ],
+      [{ type: "text", text: "Done! I deleted test.json." }],
+    ],
+  }),
+  stopWhen: stepCountIs(5),
+  usageHandler: testUsageHandler,
+});
+
 // --- Test helpers ---
 
 export const testApproveFlow = action({
@@ -186,6 +220,53 @@ export const testApproveFlowWithEditNote = action({
     });
 
     const allMessages = await approvalAgent.listMessages(ctx, {
+      threadId: thread.threadId,
+      paginationOpts: { cursor: null, numItems: 20 },
+    });
+
+    const toolResultPart = allMessages.page
+      .flatMap((message) =>
+        Array.isArray(message.message?.content)
+          ? (message.message.content as Array<any>)
+          : [],
+      )
+      .find((part) => part?.type === "tool-result");
+
+    return {
+      secondText: result2.text,
+      toolResultOutput: toolResultPart?.output ?? null,
+    };
+  },
+});
+
+export const testApproveJsonFlowWithEditNote = action({
+  args: {},
+  handler: async (ctx) => {
+    const { thread } = await approvalJsonAgent.createThread(ctx, {
+      userId: "u-edit-json",
+    });
+
+    const result1 = await thread.generateText({
+      prompt: "Delete test.json",
+    });
+
+    const approvalId = getApprovalIdFromSavedMessages(result1.savedMessages);
+
+    const { messageId } = await ctx.runMutation(
+      anyApi["approval.test"].submitApprovalForApprovalAgent,
+      {
+        threadId: thread.threadId,
+        approvalId,
+        editNote:
+          "User changed filename from PIVQNLQGQMVHQAISPRT to MTYKLILNGKTLKGETTTEAVDAATAEKVFKQYANDNGVDGEWTYDDATKTFTVTE before approval.",
+      },
+    );
+
+    const result2 = await thread.generateText({
+      promptMessageId: messageId,
+    });
+
+    const allMessages = await approvalJsonAgent.listMessages(ctx, {
       threadId: thread.threadId,
       paginationOpts: { cursor: null, numItems: 20 },
     });
@@ -449,6 +530,7 @@ const testApi: ApiFromModules<{
   fns: {
     testApproveFlow: typeof testApproveFlow;
     testApproveFlowWithEditNote: typeof testApproveFlowWithEditNote;
+    testApproveJsonFlowWithEditNote: typeof testApproveJsonFlowWithEditNote;
     testDenyFlow: typeof testDenyFlow;
     testApproveFlowWithInterveningMessage: typeof testApproveFlowWithInterveningMessage;
     testMultiToolApproveFlow: typeof testMultiToolApproveFlow;
@@ -527,6 +609,29 @@ describe("Tool Approval Workflow", () => {
       "User changed filename from PIVQNLQGQMVHQAISPRT to MTYKLILNGKTLKGETTTEAVDAATAEKVFKQYANDNGVDGEWTYDDATKTFTVTE before approval.",
     );
     expect(result.toolResultOutput.value).toContain("Deleted: test.txt");
+  });
+
+  test("approve edit note is attached to structured tool output without wrapping depth", async () => {
+    usageCalls.length = 0;
+    const t = initConvexTest(schema);
+    const result = await t.action(testApi.testApproveJsonFlowWithEditNote, {});
+
+    expect(result.secondText).toBe("Done! I deleted test.json.");
+    expect(result.toolResultOutput).toMatchObject({ type: "json" });
+    expect(result.toolResultOutput.value).toMatchObject({
+      approvalEdit: {
+        editedBeforeApproval: true,
+      },
+      status: "deleted",
+      filename: "test.json",
+      detail: {
+        operation: "delete",
+      },
+    });
+    expect(result.toolResultOutput.value.result).toBeUndefined();
+    expect(result.toolResultOutput.value.approvalEdit.note).toContain(
+      "User changed filename from PIVQNLQGQMVHQAISPRT",
+    );
   });
 
   test("multi-tool: approve two tool calls from the same step", async () => {

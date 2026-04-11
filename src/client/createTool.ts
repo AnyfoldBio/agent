@@ -425,16 +425,27 @@ function augmentToolResultOutputWithApprovalEdit(
         value: `${noteText}\n\n${output.value}`,
       };
     case "json":
+      if (
+        output.value !== null &&
+        typeof output.value === "object" &&
+        !Array.isArray(output.value)
+      ) {
+        return {
+          ...output,
+          value: {
+            approvalEdit: {
+              approvalId: metadata.approvalId,
+              editedBeforeApproval: true,
+              note: metadata.editNote,
+            },
+            ...(output.value as Record<string, unknown>),
+          } as any,
+        };
+      }
       return {
-        ...output,
-        value: {
-          approvalEdit: {
-            approvalId: metadata.approvalId,
-            editedBeforeApproval: true,
-            note: metadata.editNote,
-          },
-          result: output.value,
-        } as any,
+        type: "text",
+        value: `${noteText}\n\n${JSON.stringify(output.value)}`,
+        providerOptions: output.providerOptions,
       };
     case "content":
       return {
