@@ -26,7 +26,13 @@ export type ToolCtx<DataModel extends GenericDataModel = GenericDataModel> =
     userId?: string;
     threadId?: string;
     messageId?: string;
+    promptMessageId?: string;
   };
+
+type ApprovalEditMetadata = {
+  approvalId: string;
+  editNote: string;
+};
 
 /**
  * Function that is called to determine if the tool needs approval before it can be executed.
@@ -260,6 +266,8 @@ export function createTool<INPUT, OUTPUT, Ctx extends ToolCtx = ToolCtx>(
         " handler function, define an outputSchema, or both",
     );
 
+  const approvalEditMetadataByToolCallId = new Map<string, ApprovalEditMetadata>();
+
   const t = tool<INPUT, OUTPUT>({
     type: "function",
     __acceptsCtx: true,
@@ -286,19 +294,37 @@ export function createTool<INPUT, OUTPUT, Ctx extends ToolCtx = ToolCtx>(
     strict: def.strict,
     ...(executeHandler
       ? {
-          execute(
+          async execute(
             this: Tool<INPUT, OUTPUT>,
             input: INPUT,
             options: ToolExecutionOptions,
           ) {
-            if (!getCtx(this)) {
+            const ctx = getCtx(this);
+            if (!ctx) {
               throw new Error(
                 "To use a Convex tool, you must either provide the ctx" +
                   " at definition time (dynamically in an action), or use the Agent to" +
                   " call it (which injects the ctx, userId and threadId)",
               );
             }
-            return executeHandler(getCtx(this), input, options);
+            const approvalEditMetadata =
+              await getApprovalEditMetadataForToolCall(
+                ctx,
+                options.toolCallId,
+              ).catch((error) => {
+                console.warn(
+                  "[@convex-dev/agent] Failed to resolve approval edit metadata",
+                  error,
+                );
+                return undefined;
+              });
+            if (approvalEditMetadata) {
+              approvalEditMetadataByToolCallId.set(
+                options.toolCallId,
+                approvalEditMetadata,
+              );
+            }
+            return (await executeHandler(ctx, input, options)) as any;
           },
         }
       : {}),
@@ -322,17 +348,215 @@ export function createTool<INPUT, OUTPUT, Ctx extends ToolCtx = ToolCtx>(
       return origOnInputAvailable.call(this, getCtx(this), options);
     };
   }
-  if (def.toModelOutput) {
-    const origToModelOutput = def.toModelOutput;
-    t.toModelOutput = function (this: Tool<INPUT, OUTPUT>, options) {
-      return origToModelOutput.call(this, getCtx(this), options);
-    };
-  }
+  const origToModelOutput = def.toModelOutput;
+  t.toModelOutput = async function (
+    this: Tool<INPUT, OUTPUT>,
+    options,
+  ): Promise<ToolResultOutput> {
+    const baseOutput = origToModelOutput
+      ? await origToModelOutput.call(this, getCtx(this), options)
+      : defaultToolResultOutput(options.output);
+    const approvalEditMetadata = approvalEditMetadataByToolCallId.get(
+      options.toolCallId,
+    );
+    if (!approvalEditMetadata) {
+      return baseOutput;
+    }
+    approvalEditMetadataByToolCallId.delete(options.toolCallId);
+    return augmentToolResultOutputWithApprovalEdit(
+      baseOutput,
+      approvalEditMetadata,
+    );
+  };
   return t;
 }
 
 function getCtx<Ctx extends ToolCtx>(tool: any): Ctx {
   return (tool as { ctx: Ctx }).ctx;
+}
+
+function defaultToolResultOutput(output: unknown): ToolResultOutput {
+  if (isToolResultOutput(output)) {
+    return output;
+  }
+  if (typeof output === "string") {
+    return {
+      type: "text",
+      value: output,
+    };
+  }
+  return {
+    type: "json",
+    value: (output ?? null) as any,
+  };
+}
+
+function isToolResultOutput(output: unknown): output is ToolResultOutput {
+  if (!output || typeof output !== "object") {
+    return false;
+  }
+  const type = (output as { type?: unknown }).type;
+  return (
+    type === "text" ||
+    type === "json" ||
+    type === "execution-denied" ||
+    type === "error-text" ||
+    type === "error-json" ||
+    type === "content"
+  );
+}
+
+function buildApprovalEditMetadataText(metadata: ApprovalEditMetadata): string {
+  return [
+    "Approval edit metadata: the user edited this tool's configuration before approving execution.",
+    metadata.editNote,
+  ].join("\n");
+}
+
+function augmentToolResultOutputWithApprovalEdit(
+  output: ToolResultOutput,
+  metadata: ApprovalEditMetadata,
+): ToolResultOutput {
+  const noteText = buildApprovalEditMetadataText(metadata);
+  switch (output.type) {
+    case "text":
+      return {
+        ...output,
+        value: `${noteText}\n\n${output.value}`,
+      };
+    case "json":
+      return {
+        ...output,
+        value: {
+          approvalEdit: {
+            approvalId: metadata.approvalId,
+            editedBeforeApproval: true,
+            note: metadata.editNote,
+          },
+          result: output.value,
+        } as any,
+      };
+    case "content":
+      return {
+        type: "content",
+        value: [{ type: "text", text: noteText }, ...output.value],
+      };
+    case "execution-denied":
+    case "error-text":
+    case "error-json":
+      return output;
+  }
+}
+
+async function getApprovalEditMetadataForToolCall(
+  ctx: ToolCtx,
+  toolCallId: string,
+): Promise<ApprovalEditMetadata | undefined> {
+  const promptMessageId =
+    typeof ctx.promptMessageId === "string" && ctx.promptMessageId.trim().length > 0
+      ? ctx.promptMessageId
+      : typeof ctx.messageId === "string" && ctx.messageId.trim().length > 0
+        ? ctx.messageId
+        : undefined;
+  if (!ctx.agent || !ctx.threadId || !promptMessageId) {
+    return undefined;
+  }
+
+  const messagesPage = await ctx.runQuery(
+    ctx.agent.component.messages.listMessagesByThreadId as any,
+    {
+      threadId: ctx.threadId,
+      upToAndIncludingMessageId: promptMessageId,
+      order: "desc",
+      paginationOpts: {
+        cursor: null,
+        numItems: 100,
+      },
+    },
+  );
+  const page = Array.isArray((messagesPage as any)?.page)
+    ? ((messagesPage as any).page as Array<{
+        _id?: string;
+        message?: { content?: unknown };
+      }>)
+    : [];
+  if (page.length === 0) {
+    return undefined;
+  }
+
+  const approvalResponseMessage =
+    page.find((message) => message?._id === promptMessageId) ??
+    page.find((message) =>
+      Array.isArray(message?.message?.content)
+        ? (message.message!.content as unknown[]).some(
+            (part) => (part as { type?: unknown }).type === "tool-approval-response",
+          )
+        : false,
+    );
+  const responseContent = Array.isArray(approvalResponseMessage?.message?.content)
+    ? (approvalResponseMessage!.message!.content as unknown[])
+    : [];
+  if (responseContent.length === 0) {
+    return undefined;
+  }
+
+  const approvalNotesById = new Map<string, ApprovalEditMetadata>();
+  for (const part of responseContent) {
+    if ((part as { type?: unknown }).type !== "tool-approval-response") {
+      continue;
+    }
+    const approvalId =
+      typeof (part as { approvalId?: unknown }).approvalId === "string"
+        ? ((part as { approvalId: string }).approvalId as string)
+        : undefined;
+    const approved = (part as { approved?: unknown }).approved === true;
+    const editNote =
+      typeof (part as { editNote?: unknown }).editNote === "string"
+        ? (part as { editNote: string }).editNote.trim()
+        : "";
+    if (!approvalId || !approved || editNote.length === 0) {
+      continue;
+    }
+    approvalNotesById.set(approvalId, {
+      approvalId,
+      editNote,
+    });
+  }
+  if (approvalNotesById.size === 0) {
+    return undefined;
+  }
+
+  const toolCallIdByApprovalId = new Map<string, string>();
+  for (const message of page) {
+    const content = Array.isArray(message?.message?.content)
+      ? (message!.message!.content as unknown[])
+      : [];
+    for (const part of content) {
+      if ((part as { type?: unknown }).type !== "tool-approval-request") {
+        continue;
+      }
+      const approvalId =
+        typeof (part as { approvalId?: unknown }).approvalId === "string"
+          ? ((part as { approvalId: string }).approvalId as string)
+          : undefined;
+      const requestToolCallId =
+        typeof (part as { toolCallId?: unknown }).toolCallId === "string"
+          ? ((part as { toolCallId: string }).toolCallId as string)
+          : undefined;
+      if (!approvalId || !requestToolCallId) {
+        continue;
+      }
+      toolCallIdByApprovalId.set(approvalId, requestToolCallId);
+    }
+  }
+
+  for (const [approvalId, metadata] of approvalNotesById.entries()) {
+    if (toolCallIdByApprovalId.get(approvalId) === toolCallId) {
+      return metadata;
+    }
+  }
+
+  return undefined;
 }
 
 export function wrapTools(

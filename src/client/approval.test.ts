@@ -160,6 +160,51 @@ export const testApproveFlow = action({
   },
 });
 
+export const testApproveFlowWithEditNote = action({
+  args: {},
+  handler: async (ctx) => {
+    const { thread } = await approvalAgent.createThread(ctx, { userId: "u-edit" });
+
+    const result1 = await thread.generateText({
+      prompt: "Delete test.txt",
+    });
+
+    const approvalId = getApprovalIdFromSavedMessages(result1.savedMessages);
+
+    const { messageId } = await ctx.runMutation(
+      anyApi["approval.test"].submitApprovalForApprovalAgent,
+      {
+        threadId: thread.threadId,
+        approvalId,
+        editNote:
+          "User changed filename from PIVQNLQGQMVHQAISPRT to MTYKLILNGKTLKGETTTEAVDAATAEKVFKQYANDNGVDGEWTYDDATKTFTVTE before approval.",
+      },
+    );
+
+    const result2 = await thread.generateText({
+      promptMessageId: messageId,
+    });
+
+    const allMessages = await approvalAgent.listMessages(ctx, {
+      threadId: thread.threadId,
+      paginationOpts: { cursor: null, numItems: 20 },
+    });
+
+    const toolResultPart = allMessages.page
+      .flatMap((message) =>
+        Array.isArray(message.message?.content)
+          ? (message.message.content as Array<any>)
+          : [],
+      )
+      .find((part) => part?.type === "tool-result");
+
+    return {
+      secondText: result2.text,
+      toolResultOutput: toolResultPart?.output ?? null,
+    };
+  },
+});
+
 export const testDenyFlow = action({
   args: {},
   handler: async (ctx) => {
@@ -377,9 +422,19 @@ export const submitApprovalForMultiToolAgent = mutation({
 });
 
 export const submitApprovalForApprovalAgent = mutation({
-  args: { threadId: v.string(), approvalId: v.string(), reason: v.optional(v.string()) },
-  handler: async (ctx, { threadId, approvalId, reason }) => {
-    return approvalAgent.approveToolCall(ctx, { threadId, approvalId, reason });
+  args: {
+    threadId: v.string(),
+    approvalId: v.string(),
+    reason: v.optional(v.string()),
+    editNote: v.optional(v.string()),
+  },
+  handler: async (ctx, { threadId, approvalId, reason, editNote }) => {
+    return approvalAgent.approveToolCall(ctx, {
+      threadId,
+      approvalId,
+      reason,
+      editNote,
+    });
   },
 });
 
@@ -393,6 +448,7 @@ export const submitDenialForDenialAgent = mutation({
 const testApi: ApiFromModules<{
   fns: {
     testApproveFlow: typeof testApproveFlow;
+    testApproveFlowWithEditNote: typeof testApproveFlowWithEditNote;
     testDenyFlow: typeof testDenyFlow;
     testApproveFlowWithInterveningMessage: typeof testApproveFlowWithInterveningMessage;
     testMultiToolApproveFlow: typeof testMultiToolApproveFlow;
@@ -457,6 +513,20 @@ describe("Tool Approval Workflow", () => {
     expect(result.usageCallCount).toBeGreaterThanOrEqual(2);
     expect(result.lastUsage!.inputTokenDetails).toBeDefined();
     expect(result.lastUsage!.outputTokenDetails).toBeDefined();
+  });
+
+  test("approve edit note is attached to the saved tool result output", async () => {
+    usageCalls.length = 0;
+    const t = initConvexTest(schema);
+    const result = await t.action(testApi.testApproveFlowWithEditNote, {});
+
+    expect(result.secondText).toBe("Done! I deleted test.txt.");
+    expect(result.toolResultOutput).toMatchObject({ type: "text" });
+    expect(result.toolResultOutput.value).toContain("Approval edit metadata");
+    expect(result.toolResultOutput.value).toContain(
+      "User changed filename from PIVQNLQGQMVHQAISPRT to MTYKLILNGKTLKGETTTEAVDAATAEKVFKQYANDNGVDGEWTYDDATKTFTVTE before approval.",
+    );
+    expect(result.toolResultOutput.value).toContain("Deleted: test.txt");
   });
 
   test("multi-tool: approve two tool calls from the same step", async () => {
